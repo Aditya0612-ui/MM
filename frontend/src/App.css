@@ -1,0 +1,378 @@
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.header-label {
+  color: #38bdf8;
+  font-size: 0.8rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 16px;
+  background: linear-gradient(to right, #38bdf8, #818cf8);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.main-title {
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: white;
+  margin: 0 0 16px 0;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  color: #94a3b8;
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+.search-container {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 20px;
+  padding: 40px;
+  width: 100%;
+  max-width: 800px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  margin-bottom: 40px;
+}
+
+.input-label {
+  display: block;
+  color: #9ca3af;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.input-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.url-input {
+  flex: 1;
+  background: #1f2937;
+  border: 2px solid #374151;
+  border-radius: 12px;
+  padding: 16px 20px;
+  color: white;
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.url-input:focus {
+  border-color: #06b6d4;
+  box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.2);
+}
+
+.url-input::placeholder {
+  color: #4b5563;
+}
+
+.btn-qualities {
+  background: #a855f7;
+  color: white;
+  border: none;
+  padding: 0 32px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-qualities:hover {
+  background: #9333ea;
+  transform: translateY(-1px);
+}
+
+.btn-quick-download {
+  width: 100%;
+  background: linear-gradient(90deg, #a855f7 0%, #06b6d4 100%);
+  border: none;
+  padding: 20px;
+  border-radius: 12px;
+  color: white;
+  font-weight: 600;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.btn-quick-download:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.features-list {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.feature-pill {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Loading & Video Info States */
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.video-result {
+  margin-top: 30px;
+  background: #1f2937;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  gap: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.video-thumb {
+  width: 160px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.video-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+}
+
+.btn-download-action {
+  background: #22c55e;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  margin-top: 10px;
+  font-weight: 500;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .App {
+    padding: 10px;
+  }
+
+  .main-title {
+    font-size: 2.5rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+    padding: 0 10px;
+  }
+
+  .search-container {
+    padding: 24px;
+    margin-bottom: 30px;
+  }
+
+  .input-row {
+    flex-direction: column;
+  }
+
+  .btn-qualities {
+    padding: 16px;
+    width: 100%;
+  }
+
+  .video-result {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .video-thumb {
+    width: 100%;
+    margin-bottom: 16px;
+  }
+
+  .video-info {
+    width: 100%;
+  }
+
+  .btn-download-action {
+    width: 100%;
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    margin-bottom: 30px;
+  }
+
+  .main-title {
+    font-size: 2rem;
+  }
+
+  .header-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+  }
+
+  .search-container {
+    padding: 20px 16px;
+  }
+
+  .features-list {
+    flex-direction: column;
+    width: 100%;
+    gap: 12px;
+  }
+
+  .feature-pill {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .info-section {
+    grid-template-columns: 1fr;
+    margin-top: 40px;
+  }
+}
+
+/* Info Section */
+.info-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  max-width: 1000px;
+  width: 100%;
+  margin-top: 60px;
+  padding-top: 40px;
+  border-top: 1px solid #1f2937;
+}
+
+.info-card {
+  text-align: center;
+  padding: 20px;
+  background: transparent;
+  border-radius: 16px;
+  transition: all 0.3s ease;
+}
+
+.info-card:hover {
+  background: #111827;
+  transform: translateY(-5px);
+}
+
+.icon-wrapper {
+  width: 60px;
+  height: 60px;
+  background: #1f2937;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  color: #38bdf8;
+  font-size: 1.8rem;
+  transition: all 0.3s ease;
+}
+
+.info-card:hover .icon-wrapper {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
+.info-card h3 {
+  color: white;
+  font-size: 1.25rem;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.info-card p {
+  color: #94a3b8;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+/* Updated Feature Pill with Icon */
+.feature-pill i {
+  font-size: 1.2rem;
+  color: #a855f7;
+}
+
+.feature-pill:nth-child(2) i {
+  color: #38bdf8;
+}
+
+.feature-pill:nth-child(3) i {
+  color: #22c55e;
+}
+
+.feature-pill:nth-child(4) i {
+  color: #f59e0b;
+}
+
+.feature-pill:nth-child(5) i {
+  color: #ef4444;
+}
+
+.feature-pill:nth-child(6) i {
+  color: #6366f1;
+}

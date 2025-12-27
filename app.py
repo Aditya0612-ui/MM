@@ -15,12 +15,38 @@ app = Flask(__name__)
 CORS(app)
 
 def sanitize_filename(filename):
-    """Remove invalid characters from filename"""
+    """Remove invalid characters from filename and ensure ASCII-safe"""
+    # Replace common Unicode characters with ASCII equivalents
+    replacements = {
+        '\u2013': '-',  # en dash
+        '\u2014': '-',  # em dash
+        '\u2018': "'",  # left single quote
+        '\u2019': "'",  # right single quote
+        '\u201C': '"',  # left double quote
+        '\u201D': '"',  # right double quote
+        '\u2026': '...',  # ellipsis
+    }
+    
+    for unicode_char, ascii_char in replacements.items():
+        filename = filename.replace(unicode_char, ascii_char)
+    
+    # Remove any remaining non-ASCII characters
+    filename = filename.encode('ascii', 'ignore').decode('ascii')
+    
     # Remove invalid characters for filenames
     filename = re.sub(r'[<>:"/\\|?*]', '', filename)
+    
+    # Remove extra spaces
+    filename = ' '.join(filename.split())
+    
     # Limit length
     if len(filename) > 200:
         filename = filename[:200]
+    
+    # Ensure filename is not empty
+    if not filename:
+        filename = 'video'
+    
     return filename
 
 @app.route('/api/download', methods=['POST'])
@@ -34,21 +60,65 @@ def download_video():
             return jsonify({'error': 'No URL provided'}), 400
         
         # First, get video info to extract the title
-        with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+        info_opts = {
+            'quiet': True,
+            'no_warnings': True,
+            'socket_timeout': 30,
+            'nocheckcertificate': True,
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web'],
+                }
+            },
+        }
+        
+        with yt_dlp.YoutubeDL(info_opts) as ydl:
             info = ydl.extract_info(video_url, download=False)
             video_title = sanitize_filename(info.get('title', 'video'))
+            duration = info.get('duration', 0)
         
-        # Create a temporary file
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
-        temp_path = temp_file.name
-        temp_file.close()
+        # Create a temporary file path (but don't create the file yet)
+        temp_dir = tempfile.gettempdir()
+        temp_path = os.path.join(temp_dir, f'ytdl_{uuid.uuid4().hex}.mp4')
         
-        # Options for the downloader - Force 1080p quality only
+        # Options for the downloader with multiple fallback formats
+        # Supports very long videos (20+ hours) with audio
         ydl_opts = {
-            'format': 'bestvideo[height=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080]',
+            'format': 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[height<=1080]',
             'outtmpl': temp_path,
-            'noplaylist': True,  # Single video only for this endpoint
+            'noplaylist': True,
             'merge_output_format': 'mp4',
+            'postprocessors': [{
+                'key': 'FFmpegVideoConvertor',
+                'preferedformat': 'mp4',
+            }],
+            'prefer_ffmpeg': True,
+            'socket_timeout': 60,
+            'retries': 15,
+            'fragment_retries': 15,
+            'http_chunk_size': 10485760,
+            'extractor_retries': 5,
+            'file_access_retries': 5,
+            'ignoreerrors': False,
+            'keepvideo': False,
+            'no_warnings': False,
+            'quiet': False,
+            # YouTube bot detection bypass
+            'nocheckcertificate': True,
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web'],
+                    'skip': ['hls', 'dash'],
+                }
+            },
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-us,en;q=0.5',
+                'Sec-Fetch-Mode': 'navigate',
+            },
         }
         
         # Download video to temp file
@@ -69,7 +139,11 @@ def download_video():
                     pass
         
         response = Response(generate(), mimetype='video/mp4')
-        response.headers['Content-Disposition'] = f'attachment; filename="{video_title}.mp4"'
+        # Use ASCII-safe filename encoding for Content-Disposition
+        safe_filename = video_title.encode('ascii', 'ignore').decode('ascii')
+        if not safe_filename:
+            safe_filename = 'video'
+        response.headers['Content-Disposition'] = f'attachment; filename="{safe_filename}.mp4"'
         return response
     
     except Exception as e:
@@ -79,7 +153,23 @@ def download_video():
                 os.unlink(temp_path)
         except:
             pass
-        return jsonify({'error': str(e)}), 500
+        
+        error_msg = str(e)
+        # Provide user-friendly error messages
+        if 'Sign in to confirm' in error_msg or 'not a bot' in error_msg:
+            error_msg = 'YouTube bot detection triggered. Try again in a few minutes or try a different video.'
+        elif 'HTTP Error 429' in error_msg:
+            error_msg = 'YouTube rate limit reached. Please try again in a few minutes.'
+        elif 'HTTP Error 403' in error_msg or 'Sign in to confirm your age' in error_msg:
+            error_msg = 'This video is age-restricted or private and cannot be downloaded.'
+        elif 'Video unavailable' in error_msg:
+            error_msg = 'This video is unavailable or has been removed.'
+        elif 'Requested format is not available' in error_msg:
+            error_msg = 'The requested quality is not available for this video. Try a different video.'
+        elif 'timeout' in error_msg.lower():
+            error_msg = 'Download timeout. The video might be too long or connection is slow.'
+        
+        return jsonify({'error': error_msg}), 500
 
 @app.route('/api/info', methods=['POST'])
 def get_video_info():
@@ -95,6 +185,20 @@ def get_video_info():
             'quiet': True,
             'no_warnings': True,
             'extract_flat': 'in_playlist' if info_type == 'playlist' else False,
+            'nocheckcertificate': True,
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web'],
+                    'skip': ['hls', 'dash'],
+                }
+            },
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-us,en;q=0.5',
+                'Sec-Fetch-Mode': 'navigate',
+            },
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -139,13 +243,41 @@ def download_playlist():
         # Create a temporary directory for playlist downloads
         temp_dir = tempfile.mkdtemp()
         
-        # Options for playlist download - Force 1080p quality
+        # Options for playlist download with better error handling and audio support
         ydl_opts = {
-            'format': 'bestvideo[height=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080]',
+            'format': 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[height<=1080]',
             'outtmpl': os.path.join(temp_dir, '%(playlist_index)s - %(title)s.%(ext)s'),
-            'noplaylist': False,  # Enable playlist download
+            'noplaylist': False,
             'merge_output_format': 'mp4',
-            'ignoreerrors': True,  # Continue on download errors
+            'postprocessors': [{
+                'key': 'FFmpegVideoConvertor',
+                'preferedformat': 'mp4',
+            }],
+            'prefer_ffmpeg': True,
+            'ignoreerrors': True,
+            'socket_timeout': 60,
+            'retries': 15,
+            'fragment_retries': 15,
+            'http_chunk_size': 10485760,
+            'extractor_retries': 5,
+            'file_access_retries': 5,
+            'max_downloads': 50,
+            'keepvideo': False,
+            # YouTube bot detection bypass
+            'nocheckcertificate': True,
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web'],
+                    'skip': ['hls', 'dash'],
+                }
+            },
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-us,en;q=0.5',
+                'Sec-Fetch-Mode': 'navigate',
+            },
         }
         
         # Download entire playlist
@@ -181,7 +313,11 @@ def download_playlist():
                     pass
         
         response = Response(generate(), mimetype='application/zip')
-        response.headers['Content-Disposition'] = f'attachment; filename="{playlist_title}.zip"'
+        # Use ASCII-safe filename encoding for Content-Disposition
+        safe_filename = playlist_title.encode('ascii', 'ignore').decode('ascii')
+        if not safe_filename:
+            safe_filename = 'playlist'
+        response.headers['Content-Disposition'] = f'attachment; filename="{safe_filename}.zip"'
         return response
     
     except Exception as e:

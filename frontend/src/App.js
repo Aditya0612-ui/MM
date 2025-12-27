@@ -51,14 +51,18 @@ function App() {
       if (downloadType === 'playlist') {
         setMessage('Downloading entire playlist... This may take a while.');
         
-        // Download playlist
+        // Download playlist with extended timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 7200000); // 2 hour timeout for playlists
+        
         const response = await fetch(`${API_URL}/download-playlist`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ url }),
-        });
+          signal: controller.signal,
+        }).finally(() => clearTimeout(timeoutId));
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -90,16 +94,20 @@ function App() {
         
         setMessage('Playlist downloaded successfully as ZIP file!');
       } else {
-        setMessage('Downloading video to your device...');
+        setMessage('Downloading video... Please wait, this may take a while for very long videos (20+ hours).');
         
-        // Download single video
+        // Download single video with extended timeout for long videos
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3600000); // 60 minute timeout for very long videos
+        
         const response = await fetch(`${API_URL}/download`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ url, type: 'single' }),
-        });
+          signal: controller.signal,
+        }).finally(() => clearTimeout(timeoutId));
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -133,7 +141,11 @@ function App() {
       }
       setError('');
     } catch (err) {
-      setError(err.message || 'Failed to download');
+      if (err.name === 'AbortError') {
+        setError('Download timeout. The video may be too long or your connection is slow. Please try a shorter video.');
+      } else {
+        setError(err.message || 'Failed to download');
+      }
       setMessage('');
     } finally {
       setLoading(false);

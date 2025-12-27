@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import './App.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -7,34 +6,9 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 function App() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
-  const [videoInfo, setVideoInfo] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [downloadedFile, setDownloadedFile] = useState('');
   const [downloadType, setDownloadType] = useState('single'); // 'single' or 'playlist'
-
-  const getVideoInfo = async () => {
-    if (!url) {
-      setError('Please enter a YouTube URL');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    setMessage('');
-    setVideoInfo(null);
-
-    try {
-      const response = await axios.post(`${API_URL}/info`, { url, type: downloadType });
-      setVideoInfo(response.data);
-      setError('');
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to fetch video info');
-      setVideoInfo(null);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const downloadVideo = async () => {
     if (!url) {
@@ -45,7 +19,6 @@ function App() {
     setLoading(true);
     setError('');
     setMessage('');
-    setDownloadedFile('');
 
     try {
       if (downloadType === 'playlist') {
@@ -229,36 +202,6 @@ function App() {
         {error && (
           <div style={{ marginTop: '20px', color: '#ef4444', textAlign: 'center' }}>
             {error}
-          </div>
-        )}
-
-        {/* Video Info Preview */}
-        {videoInfo && videoInfo.type === 'single' && (
-          <div className="video-result">
-            <img src={videoInfo.thumbnail} alt={videoInfo.title} className="video-thumb" />
-            <div className="video-info">
-              <h3>{videoInfo.title}</h3>
-              <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>{videoInfo.uploader}</p>
-              <button className="btn-download-action" onClick={downloadVideo}>Download Now (1080p)</button>
-            </div>
-          </div>
-        )}
-
-        {/* Playlist Info Preview */}
-        {videoInfo && videoInfo.type === 'playlist' && (
-          <div className="video-result">
-            <div className="video-info" style={{ width: '100%' }}>
-              <h3>📋 {videoInfo.title}</h3>
-              <p style={{ color: '#9ca3af', fontSize: '0.9rem' }}>
-                {videoInfo.uploader} • {videoInfo.video_count} videos
-              </p>
-              <button className="btn-download-action" onClick={downloadVideo}>
-                Download All {videoInfo.video_count} Videos (1080p)
-              </button>
-              <p style={{ color: '#fbbf24', fontSize: '0.85rem', marginTop: '10px' }}>
-                ⚠️ All videos will be downloaded as a ZIP file
-              </p>
-            </div>
           </div>
         )}
 
